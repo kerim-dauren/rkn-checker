@@ -74,12 +74,8 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Override sources with custom URLs if provided
-	if primaryURL := getEnvString("REGISTRY_PRIMARY_URL", ""); primaryURL != "" {
-		config.Registry.Sources[0].URL = primaryURL
-	}
-
-	if fallbackURL := getEnvString("REGISTRY_FALLBACK_URL", ""); fallbackURL != "" && len(config.Registry.Sources) > 1 {
-		config.Registry.Sources[1].URL = fallbackURL
+	if officialURL := getEnvString("REGISTRY_OFFICIAL_URL", ""); officialURL != "" {
+		config.Registry.Sources[0].URL = officialURL
 	}
 
 	return config, nil
@@ -88,13 +84,6 @@ func LoadConfig() (*Config, error) {
 // getDefaultSources returns default registry source configurations
 func getDefaultSources() []registry.SourceConfig {
 	return []registry.SourceConfig{
-		{
-			Type:       registry.SourceTypeGitHub,
-			URL:        "https://raw.githubusercontent.com/zapret-info/z-i/master/dump.csv",
-			Timeout:    30 * time.Second,
-			MaxRetries: 3,
-			UserAgent:  "RKN-Checker/1.0",
-		},
 		{
 			Type:       registry.SourceTypeOfficial,
 			URL:        "https://vigruzki.rkn.gov.ru/services/OperatorRequest/",

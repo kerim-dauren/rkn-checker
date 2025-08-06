@@ -21,7 +21,6 @@ type Source interface {
 type SourceType string
 
 const (
-	SourceTypeGitHub   SourceType = "github"
 	SourceTypeOfficial SourceType = "official"
 )
 
@@ -37,13 +36,6 @@ type SourceConfig struct {
 // DefaultSourceConfigs returns default configurations for known sources
 func DefaultSourceConfigs() []SourceConfig {
 	return []SourceConfig{
-		{
-			Type:       SourceTypeGitHub,
-			URL:        "https://raw.githubusercontent.com/zapret-info/z-i/master/dump.csv",
-			Timeout:    30 * time.Second,
-			MaxRetries: 3,
-			UserAgent:  "RKN-Checker/1.0",
-		},
 		{
 			Type:       SourceTypeOfficial,
 			URL:        "https://vigruzki.rkn.gov.ru/services/OperatorRequest/",

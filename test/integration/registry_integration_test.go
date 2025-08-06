@@ -29,7 +29,7 @@ func TestRegistryIntegration(t *testing.T) {
 	clientConfig := registry.ClientConfig{
 		Sources: []registry.SourceConfig{
 			{
-				Type:       registry.SourceTypeGitHub,
+				Type:       registry.SourceTypeOfficial,
 				URL:        server.URL,
 				Timeout:    10 * time.Second,
 				MaxRetries: 2,
@@ -133,38 +133,20 @@ func TestRegistryIntegration(t *testing.T) {
 	}
 }
 
-// TestRegistryIntegration_SourceFailover tests failover to secondary source
+// TestRegistryIntegration_SourceFailover tests registry failure handling
 func TestRegistryIntegration_SourceFailover(t *testing.T) {
-	// Primary server that fails
-	primaryCalls := 0
-	primaryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		primaryCalls++
+	// Server that always fails
+	failingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
-	defer primaryServer.Close()
+	defer failingServer.Close()
 
-	// Secondary server that succeeds
-	testData := createSampleRegistryData()
-	secondaryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/csv")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(testData))
-	}))
-	defer secondaryServer.Close()
-
-	// Create client with both sources
+	// Create client with failing source
 	clientConfig := registry.ClientConfig{
 		Sources: []registry.SourceConfig{
 			{
-				Type:       registry.SourceTypeGitHub,
-				URL:        primaryServer.URL,
-				Timeout:    5 * time.Second,
-				MaxRetries: 1,
-				UserAgent:  "Integration-Test/1.0",
-			},
-			{
 				Type:       registry.SourceTypeOfficial,
-				URL:        secondaryServer.URL,
+				URL:        failingServer.URL,
 				Timeout:    5 * time.Second,
 				MaxRetries: 1,
 				UserAgent:  "Integration-Test/1.0",
@@ -179,11 +161,51 @@ func TestRegistryIntegration_SourceFailover(t *testing.T) {
 		t.Fatalf("failed to create registry client: %v", err)
 	}
 
-	// Fetch registry (should fallback to secondary)
+	// Fetch registry (should fail)
 	ctx := context.Background()
-	fetchedRegistry, err := client.FetchRegistry(ctx)
+	_, err = client.FetchRegistry(ctx)
+	if err == nil {
+		t.Error("expected fetch to fail with failing server")
+	}
+
+	// Verify consecutive failures are tracked
+	if client.GetConsecutiveFailures() == 0 {
+		t.Error("should have consecutive failures recorded")
+	}
+
+	// Now test with a working server
+	testData := createSampleRegistryData()
+	workingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(testData))
+	}))
+	defer workingServer.Close()
+
+	// Update client with working source
+	workingConfig := registry.ClientConfig{
+		Sources: []registry.SourceConfig{
+			{
+				Type:       registry.SourceTypeOfficial,
+				URL:        workingServer.URL,
+				Timeout:    5 * time.Second,
+				MaxRetries: 1,
+				UserAgent:  "Integration-Test/1.0",
+			},
+		},
+		MaxConcurrent: 5,
+		Timeout:       30 * time.Second,
+	}
+
+	workingClient, err := registry.NewClient(workingConfig)
 	if err != nil {
-		t.Fatalf("failed to fetch registry with failover: %v", err)
+		t.Fatalf("failed to create working registry client: %v", err)
+	}
+
+	// Fetch registry (should succeed)
+	fetchedRegistry, err := workingClient.FetchRegistry(ctx)
+	if err != nil {
+		t.Fatalf("failed to fetch registry from working server: %v", err)
 	}
 
 	if fetchedRegistry == nil {
@@ -194,14 +216,9 @@ func TestRegistryIntegration_SourceFailover(t *testing.T) {
 		t.Error("registry should not be empty")
 	}
 
-	// Verify primary was tried
-	if primaryCalls == 0 {
-		t.Error("primary server should have been called")
-	}
-
-	// Verify last successful source is the secondary
-	if client.GetLastSuccessfulSource() != "Official RKN API" {
-		t.Errorf("expected last successful source to be 'Official RKN API', got %q", client.GetLastSuccessfulSource())
+	// Verify successful source tracking
+	if workingClient.GetLastSuccessfulSource() != "Official RKN API" {
+		t.Errorf("expected last successful source to be 'Official RKN API', got %q", workingClient.GetLastSuccessfulSource())
 	}
 }
 
@@ -341,7 +358,7 @@ func BenchmarkIntegrationWorkflow(b *testing.B) {
 	clientConfig := registry.ClientConfig{
 		Sources: []registry.SourceConfig{
 			{
-				Type:       registry.SourceTypeGitHub,
+				Type:       registry.SourceTypeOfficial,
 				URL:        server.URL,
 				Timeout:    10 * time.Second,
 				MaxRetries: 1,

@@ -58,8 +58,6 @@ func NewClient(config ClientConfig) (*Client, error) {
 // createSource creates a source instance based on configuration
 func (c *Client) createSource(config SourceConfig) (Source, error) {
 	switch config.Type {
-	case SourceTypeGitHub:
-		return NewGitHubSource(config), nil
 	case SourceTypeOfficial:
 		return NewOfficialSource(config), nil
 	default:

@@ -35,12 +35,12 @@ func TestLoadConfig_DefaultValues(t *testing.T) {
 	}
 
 	// Test default registry config
-	if len(config.Registry.Sources) != 2 {
-		t.Errorf("expected 2 registry sources, got %d", len(config.Registry.Sources))
+	if len(config.Registry.Sources) != 1 {
+		t.Errorf("expected 1 registry source, got %d", len(config.Registry.Sources))
 	}
 
-	if config.Registry.Sources[0].Type != registry.SourceTypeGitHub {
-		t.Errorf("expected first source to be GitHub, got %v", config.Registry.Sources[0].Type)
+	if config.Registry.Sources[0].Type != registry.SourceTypeOfficial {
+		t.Errorf("expected first source to be Official, got %v", config.Registry.Sources[0].Type)
 	}
 
 	if config.Registry.UpdateConfig.Interval != 48*time.Hour {
@@ -118,8 +118,7 @@ func TestLoadConfig_EnvironmentOverrides(t *testing.T) {
 func TestLoadConfig_CustomRegistryURLs(t *testing.T) {
 	clearEnv()
 
-	os.Setenv("REGISTRY_PRIMARY_URL", "https://custom-primary.com/dump.csv")
-	os.Setenv("REGISTRY_FALLBACK_URL", "https://custom-fallback.com/api")
+	os.Setenv("REGISTRY_OFFICIAL_URL", "https://custom-official.com/api")
 
 	defer clearEnv()
 
@@ -128,12 +127,8 @@ func TestLoadConfig_CustomRegistryURLs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if config.Registry.Sources[0].URL != "https://custom-primary.com/dump.csv" {
-		t.Errorf("expected custom primary URL, got %q", config.Registry.Sources[0].URL)
-	}
-
-	if len(config.Registry.Sources) > 1 && config.Registry.Sources[1].URL != "https://custom-fallback.com/api" {
-		t.Errorf("expected custom fallback URL, got %q", config.Registry.Sources[1].URL)
+	if config.Registry.Sources[0].URL != "https://custom-official.com/api" {
+		t.Errorf("expected custom official URL, got %q", config.Registry.Sources[0].URL)
 	}
 }
 
@@ -410,7 +405,7 @@ func clearEnv() {
 		"GRPC_PORT", "REST_PORT", "HOST", "SERVER_ENV",
 		"LOG_LEVEL", "LOG_FORMAT", "UPDATE_INTERVAL",
 		"BLOOM_FILTER_SIZE", "BLOOM_FILTER_HASHES",
-		"REGISTRY_PRIMARY_URL", "REGISTRY_FALLBACK_URL",
+		"REGISTRY_OFFICIAL_URL",
 		"TEST_STRING", "TEST_INT", "TEST_DURATION", "TEST_BOOL",
 	}
 

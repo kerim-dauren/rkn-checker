@@ -39,7 +39,7 @@ func (m *mockSource) IsHealthy(ctx context.Context) bool {
 func TestNewClient(t *testing.T) {
 	config := ClientConfig{
 		Sources: []SourceConfig{
-			{Type: SourceTypeGitHub, URL: "https://example.com"},
+			{Type: SourceTypeOfficial, URL: "https://example.com"},
 		},
 		MaxConcurrent: 5,
 		Timeout:       30 * time.Second,
