@@ -184,3 +184,8 @@ func (c *Client) GetConsecutiveFailures() int {
 func (c *Client) GetLastSuccessfulSource() string {
 	return c.lastSuccessfulSource
 }
+
+// GetSources returns the configured sources (for testing)
+func (c *Client) GetSources() []Source {
+	return c.sources
+}

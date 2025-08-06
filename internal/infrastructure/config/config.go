@@ -90,6 +90,19 @@ func getDefaultSources() []registry.SourceConfig {
 			Timeout:    60 * time.Second,
 			MaxRetries: 2,
 			UserAgent:  "RKN-Checker/1.0",
+			RKN: registry.RKNConfig{
+				DumpFormatVersion:  getEnvString("RKN_DUMP_FORMAT_VERSION", "2.4"),
+				PollInterval:       getEnvDuration("RKN_POLL_INTERVAL", 30*time.Second),
+				MaxPollAttempts:    getEnvInt("RKN_MAX_POLL_ATTEMPTS", 20),
+				RequestFilePath:    getEnvString("RKN_REQUEST_FILE_PATH", ""),
+				SignatureFilePath:  getEnvString("RKN_SIGNATURE_FILE_PATH", ""),
+				EMCHDFilePath:      getEnvString("RKN_EMCHD_FILE_PATH", ""),
+				EMCHDSignaturePath: getEnvString("RKN_EMCHD_SIGNATURE_PATH", ""),
+				CertFilePath:       getEnvString("RKN_CERT_FILE_PATH", ""),
+				KeyFilePath:        getEnvString("RKN_KEY_FILE_PATH", ""),
+				CAFilePath:         getEnvString("RKN_CA_FILE_PATH", ""),
+				InsecureSkipVerify: getEnvBool("RKN_INSECURE_SKIP_VERIFY", false),
+			},
 		},
 	}
 }

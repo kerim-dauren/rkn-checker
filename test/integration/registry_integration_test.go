@@ -45,6 +45,18 @@ func TestRegistryIntegration(t *testing.T) {
 		t.Fatalf("failed to create registry client: %v", err)
 	}
 
+	// Set test mode and mock authentication for testing (since we're using a test server, not real RKN API)
+	// This simulates having proper authentication configured
+	if len(client.GetSources()) > 0 {
+		if officialSource, ok := registry.GetOfficialSource(client.GetSources()[0]); ok {
+			officialSource.SetTestMode(true) // Use direct HTTP instead of SOAP for testing
+			officialSource.SetAuthenticationFiles(
+				[]byte("mock-request-file"),
+				[]byte("mock-signature-file"),
+			)
+		}
+	}
+
 	// Create memory store
 	store := storage.NewMemoryStore()
 
@@ -202,6 +214,17 @@ func TestRegistryIntegration_SourceFailover(t *testing.T) {
 		t.Fatalf("failed to create working registry client: %v", err)
 	}
 
+	// Set test mode and mock authentication for the working client
+	if len(workingClient.GetSources()) > 0 {
+		if officialSource, ok := registry.GetOfficialSource(workingClient.GetSources()[0]); ok {
+			officialSource.SetTestMode(true) // Use direct HTTP instead of SOAP for testing
+			officialSource.SetAuthenticationFiles(
+				[]byte("mock-request-file"),
+				[]byte("mock-signature-file"),
+			)
+		}
+	}
+
 	// Fetch registry (should succeed)
 	fetchedRegistry, err := workingClient.FetchRegistry(ctx)
 	if err != nil {
@@ -295,6 +318,17 @@ func TestFullWorkflow(t *testing.T) {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
+	// Set test mode and mock authentication for full workflow test
+	if len(client.GetSources()) > 0 {
+		if officialSource, ok := registry.GetOfficialSource(client.GetSources()[0]); ok {
+			officialSource.SetTestMode(true) // Use direct HTTP instead of SOAP for testing
+			officialSource.SetAuthenticationFiles(
+				[]byte("mock-request-file"),
+				[]byte("mock-signature-file"),
+			)
+		}
+	}
+
 	store := storage.NewMemoryStore()
 	scheduler := updater.NewScheduler(client, store, cfg.Registry.UpdateConfig)
 
@@ -372,6 +406,17 @@ func BenchmarkIntegrationWorkflow(b *testing.B) {
 	client, err := registry.NewClient(clientConfig)
 	if err != nil {
 		b.Fatalf("setup failed: %v", err)
+	}
+
+	// Set test mode and mock authentication for benchmark
+	if len(client.GetSources()) > 0 {
+		if officialSource, ok := registry.GetOfficialSource(client.GetSources()[0]); ok {
+			officialSource.SetTestMode(true) // Use direct HTTP instead of SOAP for testing
+			officialSource.SetAuthenticationFiles(
+				[]byte("mock-request-file"),
+				[]byte("mock-signature-file"),
+			)
+		}
 	}
 
 	store := storage.NewMemoryStore()

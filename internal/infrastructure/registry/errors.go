@@ -21,6 +21,14 @@ var (
 
 	// ErrUnsupportedFormat indicates the data format is not supported
 	ErrUnsupportedFormat = errors.New("unsupported registry data format")
+
+	// RKN API specific errors
+	ErrRKNAuthenticationRequired = errors.New("RKN API requires digital signature authentication")
+	ErrRKNInvalidCredentials     = errors.New("RKN API authentication failed: invalid credentials")
+	ErrRKNRequestPending         = errors.New("RKN API request is still being processed")
+	ErrRKNRequestFailed          = errors.New("RKN API request failed")
+	ErrRKNInvalidRequest         = errors.New("RKN API request format is invalid")
+	ErrRKNServiceUnavailable     = errors.New("RKN API service is temporarily unavailable")
 )
 
 // SourceError wraps errors from registry sources with additional context
@@ -85,5 +93,41 @@ func NewParsingErrorWithPosition(format string, line, column int, cause error) *
 		Line:   line,
 		Column: column,
 		Cause:  cause,
+	}
+}
+
+// RKNAPIError represents errors specific to RKN API operations
+type RKNAPIError struct {
+	Code      string
+	Message   string
+	Operation string
+	RequestID string
+}
+
+func (e *RKNAPIError) Error() string {
+	if e.RequestID != "" {
+		return fmt.Sprintf("RKN API error [%s] during %s (request %s): %s",
+			e.Code, e.Operation, e.RequestID, e.Message)
+	}
+	return fmt.Sprintf("RKN API error [%s] during %s: %s",
+		e.Code, e.Operation, e.Message)
+}
+
+// NewRKNAPIError creates a new RKNAPIError
+func NewRKNAPIError(code, message, operation string) *RKNAPIError {
+	return &RKNAPIError{
+		Code:      code,
+		Message:   message,
+		Operation: operation,
+	}
+}
+
+// NewRKNAPIErrorWithRequestID creates a new RKNAPIError with request ID
+func NewRKNAPIErrorWithRequestID(code, message, operation, requestID string) *RKNAPIError {
+	return &RKNAPIError{
+		Code:      code,
+		Message:   message,
+		Operation: operation,
+		RequestID: requestID,
 	}
 }
