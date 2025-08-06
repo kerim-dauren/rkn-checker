@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package blocking.v1;
+
+option go_package = "github.com/kerim-dauren/rkn-checker/internal/delivery/grpc/proto";
+
+service BlockingService {
+  rpc CheckURL(CheckURLRequest) returns (CheckURLResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message CheckURLRequest {
+  string url = 1;
+}
+
+message CheckURLResponse {
+  bool blocked = 1;
+  string normalized_url = 2;
+  string reason = 3;
+  string match = 4;
+}
+
+message GetStatsRequest {}
+
+message GetStatsResponse {
+  int64 total_entries = 1;
+  int64 domain_entries = 2;
+  int64 wildcard_entries = 3;
+  int64 ip_entries = 4;
+  int64 url_patterns = 5;
+  string last_update = 6;
+  string version = 7;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  enum Status {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  Status status = 1;
+  string message = 2;
+}

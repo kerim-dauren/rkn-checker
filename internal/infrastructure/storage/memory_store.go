@@ -44,7 +44,21 @@ func (ms *MemoryStore) IsBlocked(normalizedURL string) *domain.BlockingResult {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
-	if !ms.bloom.Contains(normalizedURL) {
+	// Check bloom filter for exact match or potential wildcard matches
+	bloomCheckPassed := ms.bloom.Contains(normalizedURL)
+	if !bloomCheckPassed {
+		// Also check for potential wildcard matches in bloom filter
+		parts := strings.Split(normalizedURL, ".")
+		for i := 1; i < len(parts); i++ {
+			suffix := strings.Join(parts[i:], ".")
+			if ms.bloom.Contains(suffix) {
+				bloomCheckPassed = true
+				break
+			}
+		}
+	}
+	
+	if !bloomCheckPassed {
 		return domain.NewBlockingResult(false, normalizedURL, nil)
 	}
 

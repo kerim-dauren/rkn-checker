@@ -2,99 +2,123 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/kerim-dauren/rkn-checker/internal/application"
-	"github.com/kerim-dauren/rkn-checker/internal/domain"
+	"github.com/kerim-dauren/rkn-checker/internal/delivery/grpc"
+	"github.com/kerim-dauren/rkn-checker/internal/delivery/rest"
 	"github.com/kerim-dauren/rkn-checker/internal/domain/services"
+	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/config"
+	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/registry"
 	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/storage"
+	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/updater"
 )
 
 func main() {
-	fmt.Println("=== Phase 1 Demo: Roskomnadzor URL Blocking Service ===")
-	fmt.Println()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
 
-	// Initialize components
-	fmt.Println("Initializing components...")
+	if err := cfg.Validate(); err != nil {
+		slog.Error("Invalid configuration", "error", err)
+		os.Exit(1)
+	}
+
+	setupLogging(cfg.Logging)
+
+	slog.Info("Starting Roskomnadzor URL Blocking Service")
+
 	normalizer := services.NewURLNormalizer()
 	store := storage.NewMemoryStore()
-	service := application.NewBlockingService(normalizer, store)
+	blockingService := application.NewBlockingService(normalizer, store)
 
-	// Create sample registry
-	fmt.Println("Creating sample registry...")
-	registry := createSampleRegistry()
+	registryClientConfig := registry.ClientConfig{
+		Sources:       cfg.Registry.Sources,
+		MaxConcurrent: cfg.Registry.MaxConcurrent,
+		Timeout:       cfg.Registry.Timeout,
+	}
 
-	err := service.UpdateRegistry(context.Background(), registry)
+	registryClient, err := registry.NewClient(registryClientConfig)
 	if err != nil {
-		log.Fatalf("Failed to update registry: %v", err)
+		slog.Error("Failed to create registry client", "error", err)
+		os.Exit(1)
 	}
 
-	// Display registry statistics
-	stats, _ := service.GetStats(context.Background())
-	fmt.Printf("Registry loaded: %d total entries\n", stats.TotalEntries)
-	fmt.Printf("- Domain entries: %d\n", stats.DomainEntries)
-	fmt.Printf("- Wildcard entries: %d\n", stats.WildcardEntries)
-	fmt.Printf("- IP entries: %d\n", stats.IPEntries)
-	fmt.Println()
+	scheduler := updater.NewScheduler(registryClient, store, cfg.Registry.UpdateConfig)
 
-	// Test URLs
-	testURLs := []string{
-		"https://blocked.com",
-		"http://safe.com",
-		"https://sub.wildcard.com",
-		"HTTPS://WWW.BLOCKED.COM:8080/path?query=1",
-		"http://192.168.1.100",
-		"https://тест.рф", // IDN domain
-		"not-a-valid-url",
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	fmt.Println("Testing URL blocking:")
-	fmt.Println("====================================")
-
-	for _, testURL := range testURLs {
-		result, err := service.CheckURL(context.Background(), testURL)
-
-		if err != nil {
-			fmt.Printf("❌ %s -> ERROR: %v\n", testURL, err)
-			continue
+	slog.Info("Starting registry update scheduler")
+	go func() {
+		if err := scheduler.Start(ctx); err != nil {
+			slog.Error("Registry update scheduler failed", "error", err)
 		}
+	}()
 
-		status := "✅ ALLOWED"
-		reason := ""
+	grpcServer := grpc.NewServer(blockingService, cfg.Server.GRPCPort)
+	restServer := rest.NewServer(blockingService, cfg.Server.RESTPort)
 
-		if result.IsBlocked {
-			status = "🚫 BLOCKED"
-			reason = fmt.Sprintf(" (%s)", result.Reason.String())
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := grpcServer.Start(ctx); err != nil {
+			slog.Error("gRPC server failed", "error", err)
 		}
+	}()
 
-		fmt.Printf("%s %s -> %s%s\n", status, testURL, result.NormalizedURL, reason)
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := restServer.Start(ctx); err != nil {
+			slog.Error("REST server failed", "error", err)
+		}
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	<-sigChan
+	slog.Info("Shutdown signal received")
+
+	cancel()
+
+	slog.Info("Waiting for servers to shut down...")
+	wg.Wait()
+
+	slog.Info("Service stopped")
 }
 
-func createSampleRegistry() *domain.Registry {
-	registry := domain.NewRegistry()
-
-	// Sample blocked domains
-	domains := []string{"blocked.com", "example-blocked.org", "тест.рф"}
-	for _, d := range domains {
-		entry, _ := domain.NewRegistryEntry(domain.BlockingTypeDomain, d)
-		registry.AddEntry(entry)
+func setupLogging(cfg config.LoggingConfig) {
+	var level slog.Level
+	switch cfg.Level {
+	case "debug":
+		level = slog.LevelDebug
+	case "info":
+		level = slog.LevelInfo
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		slog.Error("Invalid log level", "level", cfg.Level)
+		os.Exit(1)
 	}
 
-	// Sample wildcard rules
-	wildcards := []string{"*.wildcard.com", "*.ads.example.com"}
-	for _, w := range wildcards {
-		entry, _ := domain.NewRegistryEntry(domain.BlockingTypeWildcard, w)
-		registry.AddEntry(entry)
+	var handler slog.Handler
+	if cfg.Format == "json" {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	} else {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
 	}
 
-	// Sample IP blocks
-	ips := []string{"192.168.1.100", "10.0.0.1"}
-	for _, ip := range ips {
-		entry, _ := domain.NewRegistryEntry(domain.BlockingTypeIP, ip)
-		registry.AddEntry(entry)
-	}
-
-	return registry
+	slog.SetDefault(slog.New(handler))
 }
