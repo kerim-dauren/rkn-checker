@@ -177,6 +177,18 @@ type StoreStats struct {
 	BloomFilterSize uint64
 }
 
+// GetLastUpdateTime returns the time of the last update
+func (ms *MemoryStore) GetLastUpdateTime() time.Time {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+	return ms.lastUpdate
+}
+
+// Size returns the number of entries in the store
+func (ms *MemoryStore) Size() int {
+	return int(atomic.LoadInt64(&ms.entryCount))
+}
+
 func extractDomainFromURL(rawURL string) string {
 	if rawURL == "" {
 		return ""
