@@ -130,7 +130,7 @@ func (ms *MemoryStore) Update(registry *domain.Registry) error {
 	ms.bloom = newBloom
 	ms.lastUpdate = time.Now()
 	ms.version = registry.Version
-	
+
 	atomic.StoreInt64(&ms.entryCount, int64(len(registry.Entries)))
 
 	return nil
@@ -161,7 +161,7 @@ func (ms *MemoryStore) Clear() {
 	ms.ips = make(map[string]*domain.BlockingRule)
 	ms.urlPatterns = make(map[string][]*domain.BlockingRule)
 	ms.bloom.Clear()
-	
+
 	atomic.StoreInt64(&ms.entryCount, 0)
 	ms.lastUpdate = time.Now()
 }

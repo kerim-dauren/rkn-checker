@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/kerim-dauren/rkn-checker/internal/domain"
-	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/normalizer"
+	"github.com/kerim-dauren/rkn-checker/internal/domain/services"
 	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/storage"
 )
 
 func TestNewBlockingService(t *testing.T) {
-	normalizer := normalizer.NewURLNormalizer()
+	normalizer := services.NewURLNormalizer()
 	store := storage.NewMemoryStore()
 
 	service := NewBlockingService(normalizer, store)
@@ -177,7 +177,7 @@ func BenchmarkBlockingService_CheckURL(b *testing.B) {
 }
 
 func createTestBlockingService() *BlockingService {
-	normalizer := normalizer.NewURLNormalizer()
+	normalizer := services.NewURLNormalizer()
 	store := storage.NewMemoryStore()
 
 	// Create test registry

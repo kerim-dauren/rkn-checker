@@ -1,13 +1,12 @@
-package benchmarks
+package application
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
-	"github.com/kerim-dauren/rkn-checker/internal/application"
 	"github.com/kerim-dauren/rkn-checker/internal/domain"
-	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/normalizer"
+	"github.com/kerim-dauren/rkn-checker/internal/domain/services"
 	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/storage"
 )
 
@@ -59,140 +58,6 @@ func BenchmarkBlockingService_CheckURL_Large(b *testing.B) {
 	})
 }
 
-func BenchmarkMemoryStore_IsBlocked_ExactMatch(b *testing.B) {
-	store := storage.NewMemoryStore()
-	registry := createBenchmarkRegistry(100000)
-	store.Update(registry)
-
-	testURL := "blocked0.com"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		store.IsBlocked(testURL)
-	}
-}
-
-func BenchmarkMemoryStore_IsBlocked_WildcardMatch(b *testing.B) {
-	store := storage.NewMemoryStore()
-	registry := createBenchmarkRegistry(100000)
-	store.Update(registry)
-
-	testURL := "sub.wildcard0.com"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		store.IsBlocked(testURL)
-	}
-}
-
-func BenchmarkMemoryStore_IsBlocked_NoMatch(b *testing.B) {
-	store := storage.NewMemoryStore()
-	registry := createBenchmarkRegistry(100000)
-	store.Update(registry)
-
-	testURL := "nonexistent.com"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		store.IsBlocked(testURL)
-	}
-}
-
-func BenchmarkURLNormalizer_Normalize_Simple(b *testing.B) {
-	normalizer := normalizer.NewURLNormalizer()
-	url := "https://example.com"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = normalizer.Normalize(url)
-	}
-}
-
-func BenchmarkURLNormalizer_Normalize_Complex(b *testing.B) {
-	normalizer := normalizer.NewURLNormalizer()
-	url := "HTTPS://WWW.EXAMPLE.COM:8080/path/to/resource?query=value&param=1#fragment"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = normalizer.Normalize(url)
-	}
-}
-
-func BenchmarkURLNormalizer_Normalize_IDN(b *testing.B) {
-	normalizer := normalizer.NewURLNormalizer()
-	url := "https://тест.рф"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = normalizer.Normalize(url)
-	}
-}
-
-func BenchmarkRadixTree_Insert(b *testing.B) {
-	tree := storage.NewRadixTree()
-	domains := generateBenchmarkDomains(b.N)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		tree.Insert(domains[i], true)
-	}
-}
-
-func BenchmarkRadixTree_Search(b *testing.B) {
-	tree := storage.NewRadixTree()
-	domains := generateBenchmarkDomains(10000)
-
-	for _, domain := range domains {
-		tree.Insert(domain, true)
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		domain := domains[i%len(domains)]
-		tree.Search(domain)
-	}
-}
-
-func BenchmarkRadixTree_MatchesWildcard(b *testing.B) {
-	tree := storage.NewRadixTree()
-
-	for i := 0; i < 1000; i++ {
-		tree.Insert(fmt.Sprintf("wildcard%d.com", i), true)
-	}
-
-	testDomain := "sub.wildcard500.com"
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		tree.MatchesWildcard(testDomain)
-	}
-}
-
-func BenchmarkBloomFilter_Add(b *testing.B) {
-	bloom := storage.NewBloomFilter(1000000, 0.01)
-	items := generateBenchmarkDomains(b.N)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bloom.Add(items[i])
-	}
-}
-
-func BenchmarkBloomFilter_Contains(b *testing.B) {
-	bloom := storage.NewBloomFilter(1000000, 0.01)
-	items := generateBenchmarkDomains(100000)
-
-	for _, item := range items {
-		bloom.Add(item)
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		item := items[i%len(items)]
-		bloom.Contains(item)
-	}
-}
-
 func TestPerformanceRequirements(t *testing.T) {
 	service := createBenchmarkService(1000000)
 	ctx := context.Background()
@@ -232,14 +97,14 @@ func TestPerformanceRequirements(t *testing.T) {
 	}
 }
 
-func createBenchmarkService(registrySize int) *application.BlockingService {
-	normalizer := normalizer.NewURLNormalizer()
+func createBenchmarkService(registrySize int) *BlockingService {
+	normalizer := services.NewURLNormalizer()
 	store := storage.NewMemoryStore()
 	registry := createBenchmarkRegistry(registrySize)
 
 	store.Update(registry)
 
-	return application.NewBlockingService(normalizer, store)
+	return NewBlockingService(normalizer, store)
 }
 
 func createBenchmarkRegistry(size int) *domain.Registry {
@@ -287,14 +152,4 @@ func generateBenchmarkURLs(count int) []string {
 	}
 
 	return urls
-}
-
-func generateBenchmarkDomains(count int) []string {
-	domains := make([]string, count)
-
-	for i := 0; i < count; i++ {
-		domains[i] = fmt.Sprintf("domain%d.com", i)
-	}
-
-	return domains
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/kerim-dauren/rkn-checker/internal/application"
 	"github.com/kerim-dauren/rkn-checker/internal/domain"
-	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/normalizer"
+	"github.com/kerim-dauren/rkn-checker/internal/domain/services"
 	"github.com/kerim-dauren/rkn-checker/internal/infrastructure/storage"
 )
 
@@ -17,7 +17,7 @@ func main() {
 
 	// Initialize components
 	fmt.Println("Initializing components...")
-	normalizer := normalizer.NewURLNormalizer()
+	normalizer := services.NewURLNormalizer()
 	store := storage.NewMemoryStore()
 	service := application.NewBlockingService(normalizer, store)
 

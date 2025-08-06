@@ -62,7 +62,7 @@ func (rt *RadixTree) insert(node *radixNode, key string, value interface{}) {
 	}
 
 	commonPrefix := rt.longestCommonPrefix(child.key, key)
-	
+
 	if commonPrefix == child.key {
 		rt.insert(child, key[len(commonPrefix):], value)
 		return
@@ -84,7 +84,7 @@ func (rt *RadixTree) insert(node *radixNode, key string, value interface{}) {
 	}
 
 	parentNode := newRadixNode(commonPrefix)
-	
+
 	existingNode := newRadixNode(child.key[len(commonPrefix):])
 	existingNode.children = child.children
 	existingNode.isEnd = child.isEnd
@@ -167,14 +167,14 @@ func (rt *RadixTree) hasPrefix(node *radixNode, prefix string) bool {
 
 func (rt *RadixTree) MatchesWildcard(domain string) (interface{}, bool) {
 	parts := strings.Split(domain, ".")
-	
+
 	for i := 1; i < len(parts); i++ {
 		suffix := strings.Join(parts[i:], ".")
 		if value, exists := rt.Search(suffix); exists {
 			return value, true
 		}
 	}
-	
+
 	return nil, false
 }
 
