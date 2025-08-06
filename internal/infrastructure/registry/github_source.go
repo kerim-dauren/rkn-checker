@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -14,6 +15,7 @@ type GitHubSource struct {
 	config     SourceConfig
 	lastHealth time.Time
 	healthy    bool
+	mu         sync.RWMutex
 }
 
 // NewGitHubSource creates a new GitHub registry source
@@ -39,6 +41,9 @@ func (g *GitHubSource) Name() string {
 
 // Fetch retrieves registry data from GitHub mirror
 func (g *GitHubSource) Fetch(ctx context.Context) ([]byte, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	var lastErr error
 
 	for attempt := 0; attempt < g.config.MaxRetries; attempt++ {
@@ -107,6 +112,9 @@ func (g *GitHubSource) fetchOnce(ctx context.Context) ([]byte, error) {
 
 // IsHealthy checks if the source is currently available
 func (g *GitHubSource) IsHealthy(ctx context.Context) bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
 	// Return cached health status if checked recently
 	if time.Since(g.lastHealth) < 5*time.Minute {
 		return g.healthy

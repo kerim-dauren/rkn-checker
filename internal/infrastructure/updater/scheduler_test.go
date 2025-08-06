@@ -72,6 +72,12 @@ func (m *mockRegistryStore) Size() int {
 	return m.registry.Size()
 }
 
+func (m *mockRegistryStore) GetUpdateCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.updateCount
+}
+
 func TestNewScheduler(t *testing.T) {
 	client := &mockRegistryClient{}
 	store := &mockRegistryStore{}
@@ -202,8 +208,8 @@ func TestScheduler_PerformUpdate_Success(t *testing.T) {
 		t.Errorf("expected 1 total update, got %d", status.TotalUpdates)
 	}
 
-	if store.updateCount != 1 {
-		t.Errorf("expected 1 store update, got %d", store.updateCount)
+	if store.GetUpdateCount() != 1 {
+		t.Errorf("expected 1 store update, got %d", store.GetUpdateCount())
 	}
 }
 
@@ -329,7 +335,7 @@ func TestScheduler_TriggerUpdate(t *testing.T) {
 	// Wait for initial update
 	time.Sleep(10 * time.Millisecond)
 
-	initialCount := store.updateCount
+	initialCount := store.GetUpdateCount()
 
 	// Trigger manual update
 	scheduler.TriggerUpdate()
@@ -337,7 +343,7 @@ func TestScheduler_TriggerUpdate(t *testing.T) {
 	// Wait for triggered update
 	time.Sleep(50 * time.Millisecond)
 
-	if store.updateCount <= initialCount {
+	if store.GetUpdateCount() <= initialCount {
 		t.Error("triggered update should have occurred")
 	}
 }
@@ -355,7 +361,10 @@ func TestScheduler_IsHealthy(t *testing.T) {
 	}
 
 	// After too many failures
+	scheduler.mu.Lock()
 	scheduler.consecutiveFailures = 5
+	scheduler.mu.Unlock()
+
 	if scheduler.IsHealthy() {
 		t.Error("scheduler should not be healthy after many failures")
 	}
@@ -393,8 +402,8 @@ func TestScheduler_PeriodicUpdates(t *testing.T) {
 	// Wait for multiple updates
 	time.Sleep(150 * time.Millisecond)
 
-	if store.updateCount < 2 {
-		t.Errorf("expected at least 2 updates, got %d", store.updateCount)
+	if store.GetUpdateCount() < 2 {
+		t.Errorf("expected at least 2 updates, got %d", store.GetUpdateCount())
 	}
 }
 

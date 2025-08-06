@@ -41,25 +41,25 @@ func (m *mockBlockingService) GetStats(ctx context.Context) (*application.Blocki
 
 func TestHandler_CheckURL(t *testing.T) {
 	tests := []struct {
-		name           string
-		method         string
-		body           interface{}
-		setup          func(*mockBlockingService)
-		expectedStatus int
+		name            string
+		method          string
+		body            interface{}
+		setup           func(*mockBlockingService)
+		expectedStatus  int
 		expectedBlocked *bool
 	}{
 		{
-			name:           "valid URL should return success",
-			method:         http.MethodPost,
-			body:           CheckURLRequest{URL: "https://example.com"},
-			expectedStatus: http.StatusOK,
+			name:            "valid URL should return success",
+			method:          http.MethodPost,
+			body:            CheckURLRequest{URL: "https://example.com"},
+			expectedStatus:  http.StatusOK,
 			expectedBlocked: func() *bool { b := false; return &b }(),
 		},
 		{
-			name:           "blocked URL should return blocked result",
-			method:         http.MethodPost,
-			body:           CheckURLRequest{URL: "https://blocked.com"},
-			expectedStatus: http.StatusOK,
+			name:            "blocked URL should return blocked result",
+			method:          http.MethodPost,
+			body:            CheckURLRequest{URL: "https://blocked.com"},
+			expectedStatus:  http.StatusOK,
 			expectedBlocked: func() *bool { b := true; return &b }(),
 			setup: func(m *mockBlockingService) {
 				m.checkURLFunc = func(ctx context.Context, rawURL string) (*domain.BlockingResult, error) {

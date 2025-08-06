@@ -40,10 +40,10 @@ func (h *Handler) CheckURL(ctx context.Context, req *proto.CheckURLRequest) (*pr
 	}
 
 	response := &proto.CheckURLResponse{
-		Blocked:        result.IsBlocked,
-		NormalizedUrl:  result.NormalizedURL,
-		Reason:         "",
-		Match:          "",
+		Blocked:       result.IsBlocked,
+		NormalizedUrl: result.NormalizedURL,
+		Reason:        "",
+		Match:         "",
 	}
 
 	if result.IsBlocked {

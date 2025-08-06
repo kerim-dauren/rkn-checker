@@ -47,7 +47,7 @@ func recoveryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryS
 			slog.Error("gRPC request panicked",
 				"method", info.FullMethod,
 				"panic", r)
-			
+
 			err = status.Error(codes.Internal, "Internal server error")
 		}
 	}()

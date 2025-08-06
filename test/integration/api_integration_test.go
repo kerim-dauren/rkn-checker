@@ -26,7 +26,7 @@ func setupTestService() application.BlockingChecker {
 	service := application.NewBlockingService(normalizer, store)
 
 	registry := domain.NewRegistry()
-	
+
 	domains := []string{"blocked.com", "example-blocked.org"}
 	for _, d := range domains {
 		entry, _ := domain.NewRegistryEntry(domain.BlockingTypeDomain, d)

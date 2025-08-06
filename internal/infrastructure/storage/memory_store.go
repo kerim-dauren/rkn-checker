@@ -57,7 +57,7 @@ func (ms *MemoryStore) IsBlocked(normalizedURL string) *domain.BlockingResult {
 			}
 		}
 	}
-	
+
 	if !bloomCheckPassed {
 		return domain.NewBlockingResult(false, normalizedURL, nil)
 	}
