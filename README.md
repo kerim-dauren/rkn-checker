@@ -20,7 +20,6 @@ RKN-Checker is a microservice designed to run in Germany that provides real-time
 - [Performance](#performance)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
-- [License](#license)
 
 ## Features
 
